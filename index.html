@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Bar Chart EXP</title>
+<meta http-equiv="X-UA-Compatible" content="IE=11">
+<style>
+
+body {
+  font: 24px play;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.bar {
+  fill: white;
+}
+
+.bar:hover {
+  fill: #376c9b;
+}
+
+.x.axis path
+.axis line {
+  fill: none;
+  stroke: #000;
+}
+
+.d3-tip {
+  line-height: 2;
+  font-weight: bold;
+  font-size: 36px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 2px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 36px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+div#area2{
+  position:relative;
+  left: 950px;
+  top: -700px;
+}
+
+div#area3{
+  position:relative;
+  left: 950px;
+  top: -700px;
+}
+
+.hidden {
+  fill: #ccc !important;
+}
+</style>
+<div id="area1"></div>
+<div id="area2"></div>
+<div id="area3"></div>
+<body style="overflow: hidden">
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script>
+
+document.body.style.zoom="200%"
+
+var margin = {top: 60, right: 20, bottom: 30, left: 40},
+    width = 960 - margin.left - margin.right,
+    height = 750 - margin.top - margin.bottom;
+
+var formatPercent = d3.format(".0%");
+
+var x = d3.scale.ordinal()
+    .rangeRoundBands([0, width], .1);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    //.tickFormat(formatPercent);
+
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-24, 0])
+  .html(function(d) {
+    return "<span style='color:white'>" + d.letter + "</span>";
+  })
+
+var svg = d3.select("#area1").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var gradient = svg.append('defs')
+  .append('linearGradient')
+    .attr('id', 'gradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '0%')
+    .attr('y2', '100%')
+    .attr('spreadMethod', 'pad');
+
+gradient.append('stop')
+  .attr('offset', '20%')
+  .attr('stop-color', '#90b2db')
+  .attr('stop-opacity', 1);
+//#bed2ec
+gradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#cbd1da')
+    .attr('stop-opacity', 1);
+
+svg.append('rect')
+    .attr('width', width)
+    .attr('height', height)
+    .style('fill','url(#gradient)');
+
+svg.call(tip);
+
+d3.tsv("bar_exper.tsv", type, function(error, data) {
+  x.domain(data.map(function(d) { return d.letter; }));
+  y.domain([0, d3.max(data, function(d) { return +d.frequency; })+1]);
+  var x_bin = (data.map(function(d) { return d.bin}));
+
+  svg.append("g")
+      .attr("class", "x axis", 'fill')
+      .attr("transform", "translate(0," + height + ")", 'rotate(90)')
+      //.call(xAxis);
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .attr("fill","white")
+      .attr('font-weight','bold')
+      .text("Frequency");
+
+//this is what I tried
+
+  svg.selectAll(".bar")
+      .data(data)
+    .enter().append("rect")
+      .attr("class", 'bar')
+      .attr("x", function(d) { return x(d.letter); })
+      .attr("width", x.rangeBand())
+      .attr("y", function(d) { return y(d.frequency); })
+      .attr("height", function(d) { return height - y(d.frequency); })
+      .on('mouseover', tip.show)
+      .on('mouseout', tip.hide)
+      .on('mouseover', updateHighlightedBin)
+});
+
+
+// This function gets called on hover, passing the hovered bin value.
+  function updateHighlightedBin(bin) {
+
+    // Update the highlighting on the bars of the bar chart.
+    svg.selectAll("rect").classed("bar hidden", function(d) {
+      return d.bin !== bin;
+    });
+
+    // Update the highlighting on the circles of the scatter plot.
+    svg.selectAll("circle").classed("bar hidden", function(d) {
+      return d.bin !== bin;
+    });
+
+}
+
+  svg.append('text')
+    .text('Distribution')
+    .attr('transform', "translate(0," + -15 + ")")
+    .attr('font-size','64px')
+    .attr('font-family','orbitron');
+
+function type(d) {
+  d.frequency = +d.frequency;
+  return d;
+}
+
+var url = "exp_qq.tsv";
+        d3.tsv(url, function (error, rawData) {
+            var data = rawData.map(function (d) {
+                return { X: +d.Theoretical, Y: +d.Series }
+            });
+
+            var xExtents = d3.extent(data, function (d) { return +d.X; });
+            var yExtents = d3.extent(data, function (d) { return +d.Y; });
+
+            var maxExtent = d3.max(
+                xExtents.concat(yExtents), function (d) { return Math.abs(d); });
+
+            var graphWidth = 400, graphHeight = 250;
+            var radius = 5;
+            var margins = { left: 100, top: 50, right: 50, bottom: 50 };
+            var axisPadding = 3;
+
+            var totalHeight = graphHeight + margins.top + margins.bottom;
+            var totalWidth = graphWidth + margins.left + margins.right;
+
+            var scale = d3.scale.linear()
+                .domain([-maxExtent, maxExtent])
+                .range([0, graphWidth]);
+
+            var yscale = d3.scale.linear()
+                .domain([maxExtent, -maxExtent])
+                .range([0, graphHeight]);
+
+            var line2 = d3.svg.line()
+                .x(function(d) { return scale(d.X); })
+                .y(function(d) { return yscale(d.X); });
+
+            var svg = d3.select('#area2')
+                .append('svg')
+                .attr('width', totalWidth)
+                .attr('height', totalHeight);
+
+            var yGridlinesAxis = d3.svg.axis().scale(yscale).orient("left");
+            var yGridlineNodes = svg.append('g')
+                .attr('transform', 'translate(' + (margins.left + graphWidth) + ',' + margins.top + ')')
+                .call(yGridlinesAxis.tickSize(graphWidth + axisPadding, 0, 0).tickFormat(""));
+            styleGridlineNodes(yGridlineNodes);
+
+            var xGridlinesAxis = d3.svg.axis().scale(scale).orient("bottom");
+            var xGridlineNodes = svg.append('g')
+                .attr('transform', 'translate(' + margins.left + ',' + (totalHeight - margins.bottom + axisPadding) + ')')
+                .call(xGridlinesAxis.tickSize(-graphHeight - axisPadding, 0, 0).tickFormat(""));
+            styleGridlineNodes(xGridlineNodes);
+
+            var xAxis = d3.svg.axis().scale(scale).orient("bottom");
+            var yAxis = d3.svg.axis().scale(yscale).orient("left");
+
+            var yAxisNodes = svg.append('g')
+              .attr('transform', 'translate(' + (margins.left - axisPadding) + ',' + margins.top + ')')
+              .call(yAxis);//.attr("class", "x axis");
+            styleAxisNodes(yAxisNodes);
+
+            var xAxisNodes = svg.append('g')
+                .attr('transform', 'translate(' + margins.left + ',' + (totalWidth - margins.bottom + axisPadding) + ')')
+                .call(xAxis);
+            styleAxisNodes(xAxisNodes);
+
+            var zoomBehavior = d3.behavior.zoom()
+              .scaleExtent([.1,10])
+              .on('zoom','onZoom');
+
+            svg.append('text')
+              .attr('transform', 'translate(' + margins.left + ',' + (margins.top*.5) + ')')
+              .text('Quantile - Quantile')
+              .attr('font-family','orbitron');
+
+            svg.append('path')
+              .datum(data)
+              .attr('d',line2)
+              .attr('transform', 'translate(' + margins.left + ',' + margins.top + ')')
+              .attr('stroke', '#90b2db')
+              .attr('stroke-width', '3px');
+
+            var graphGroup = svg.append('g')
+                  .attr('transform', 'translate(' + margins.left + ',' + margins.top + ')');
+
+            graphGroup.selectAll('circle')
+                .data(data)
+                .enter()
+                .append('circle')
+                .attr({
+                    cx: function (d) { return scale(d.X); },
+                    cy: function (d) { return yscale(d.Y); },
+                    r: radius,
+                    fill: 'none',
+                    stroke: '#376c9b'
+                })
+                .on('mouseenter', function() {
+                  d3.select(this).attr('fill', '#376c9b')
+                })
+                .on('mouseout', function() {
+                  d3.select(this).attr('fill', 'none')
+                })
+                .call(zoomBehavior);
+
+        function onZoom() {
+          svg.attr('transform', 'translate('+ d3.event.translate +
+        ')'+ 'scale('+ d3.event.scale +')');
+        }
+
+        var dragBehavior = d3.behavior.drag()
+          .on("drag", onDrag)
+          .on("dragstart", function () {
+            d3.event.sourceEvent.stopPropagation
+            ();
+          });
+
+        function styleGridlineNodes(axisNodes) {
+            axisNodes.selectAll('.domain')
+                .attr({
+                    fill: 'none',
+                    stroke: 'none'
+                });
+            axisNodes.selectAll('.tick line')
+                .attr({
+                    fill: 'none',
+                    'stroke-width': 1,
+                    stroke: 'lightgray'
+                });
+        }
+
+    });
+
+        function styleAxisNodes(axisNodes) {
+            axisNodes.selectAll('.domain')
+                .attr({
+                    fill: 'none',
+                    'stroke-width': 1,
+                    stroke: 'none'
+                });
+            axisNodes.selectAll('.tick line')
+                .attr({
+                    fill: 'none',
+                    'stroke-width': 1,
+                    stroke: 'none'
+                });
+            axisNodes.selectAll("text")
+              .attr({
+                fill: 'none',
+                'font-family': 'play'
+              });
+        }
+
+//Graph 3
+</script>
+<script>
+var url = "exp_sym.tsv";
+        d3.tsv(url, function (error, rawData) {
+            var data = rawData.map(function (d) {
+                return { X: +d.Symx, Y: +d.Symy }
+            });
+
+            var xExtents = d3.extent(data, function (d) { return +d.X; });
+            var yExtents = d3.extent(data, function (d) { return +d.Y; });
+
+            var maxExtent = d3.max(
+                xExtents.concat(yExtents), function (d) { return Math.abs(d); });
+
+            var ymaxExtent = d3.max(yExtents);
+
+            var xminExtent = d3.min(xExtents);
+
+            var yminExtent = d3.min(yExtents);
+
+            var graphWidth = 400, graphHeight = 250;
+            var radius = 5;
+            var margins = { left: 100, top: 50, right: 50, bottom: 50 };
+            var axisPadding = 3;
+
+            var totalHeight = graphHeight + margins.top + margins.bottom;
+            var totalWidth = graphWidth + margins.left + margins.right;
+
+            var scale = d3.scale.linear()
+                .domain([xminExtent, maxExtent])
+                .range([0, graphWidth]);
+
+            var yscale = d3.scale.linear()
+                .domain([ymaxExtent, yminExtent])
+                .range([0, graphHeight]);
+
+            var line2 = d3.svg.line()
+                .x(function(d) { return scale(d.X); })
+                .y(function(d) { return yscale(d.X); });
+
+            var svg = d3.select('#area3')
+                .append('svg')
+                .attr('width', totalWidth)
+                .attr('height', totalHeight);
+
+            var yGridlinesAxis = d3.svg.axis().scale(yscale).orient("left");
+            var yGridlineNodes = svg.append('g')
+                .attr('transform', 'translate(' + (margins.left + graphWidth) + ',' + margins.top + ')')
+                .call(yGridlinesAxis.tickSize(graphWidth + axisPadding, 0, 0).tickFormat(""));
+            styleGridlineNodes(yGridlineNodes);
+
+            var xGridlinesAxis = d3.svg.axis().scale(scale).orient("bottom");
+            var xGridlineNodes = svg.append('g')
+                .attr('transform', 'translate(' + margins.left + ',' + (totalHeight - margins.bottom + axisPadding) + ')')
+                .call(xGridlinesAxis.tickSize(-graphHeight - axisPadding, 0, 0).tickFormat(""));
+            styleGridlineNodes(xGridlineNodes);
+
+            var xAxis = d3.svg.axis().scale(scale).orient("bottom");
+            var yAxis = d3.svg.axis().scale(yscale).orient("left");
+
+            var yAxisNodes = svg.append('g')
+              .attr('transform', 'translate(' + (margins.left - axisPadding) + ',' + margins.top + ')')
+              .call(yAxis);//.attr("class", "x axis");
+            styleAxisNodes(yAxisNodes);
+
+            var xAxisNodes = svg.append('g')
+                .attr('transform', 'translate(' + margins.left + ',' + (totalWidth - margins.bottom + axisPadding) + ')')
+                .call(xAxis);
+            styleAxisNodes(xAxisNodes);
+
+            var zoomBehavior = d3.behavior.zoom()
+              .scaleExtent([.1,10])
+              .on('zoom','onZoom');
+
+            svg.append('text')
+              .attr('transform', 'translate(' + margins.left + ',' + (margins.top*.5) + ')')
+              .text('Symmetry')
+              .attr('font-family','orbitron');
+
+            svg.append('path')
+              .datum(data)
+              .attr('d',line2)
+              .attr('transform', 'translate(' + margins.left + ',' + margins.top + ')')
+              .attr('stroke', '#90b2db')
+              .attr('stroke-width', '3px');
+
+            var graphGroup = svg.append('g')
+                  .attr('transform', 'translate(' + margins.left + ',' + margins.top + ')');
+
+            graphGroup.selectAll('circle')
+                .data(data)
+                .enter()
+                .append('circle')
+                .attr({
+                    cx: function (d) { return scale(d.X); },
+                    cy: function (d) { return yscale(d.Y); },
+                    r: radius,
+                    fill: 'none',
+                    stroke: '#376c9b'
+                })
+                .on('mouseenter', function() {
+                  d3.select(this).attr('fill', '#376c9b')
+                })
+                .on('mouseout', function() {
+                  d3.select(this).attr('fill', 'none')
+                })
+                .call(zoomBehavior);
+
+        function onZoom() {
+          svg.attr('transform', 'translate('+ d3.event.translate +
+        ')'+ 'scale('+ d3.event.scale +')');
+        }
+
+        var dragBehavior = d3.behavior.drag()
+          .on("drag", onDrag)
+          .on("dragstart", function () {
+            d3.event.sourceEvent.stopPropagation
+            ();
+          });
+
+        function styleGridlineNodes(axisNodes) {
+            axisNodes.selectAll('.domain')
+                .attr({
+                    fill: 'none',
+                    stroke: 'none'
+                });
+            axisNodes.selectAll('.tick line')
+                .attr({
+                    fill: 'none',
+                    'stroke-width': 1,
+                    stroke: 'lightgray'
+                });
+        }
+
+    });
+
+        function styleAxisNodes(axisNodes) {
+            axisNodes.selectAll('.domain')
+                .attr({
+                    fill: 'none',
+                    'stroke-width': 1,
+                    stroke: 'none'
+                });
+            axisNodes.selectAll('.tick line')
+                .attr({
+                    fill: 'none',
+                    'stroke-width': 1,
+                    stroke: 'none'
+                });
+            axisNodes.selectAll("text")
+              .attr({
+                fill: 'none',
+                'font-family': 'play'
+              });
+        }
+
+
+</script>
